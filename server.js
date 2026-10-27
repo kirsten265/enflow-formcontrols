@@ -1,3 +1,4 @@
+// Load settings such as database credentials from the .env file.
 require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
@@ -6,6 +7,8 @@ const session = require('express-session');
 
 const app = express();
 app.use(express.json());
+
+// Log each request to help track what the server receives.
 app.use((req, res, next) => { console.log(new Date().toLocaleTimeString(), req.method, req.url); next(); });
 
 /* ---------- sessions: remembers who is logged in ---------- */
@@ -16,8 +19,11 @@ app.use(session({
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 2 },   // 2 hours
 }));
 
+// Send users without a session to the login page.
 const requireLogin = (req, res, next) =>
   req.session.user ? next() : res.status(401).json({ error: 'Please log in first.' });
+
+// Let staff and admins continue, but block students from staff-only routes.
 const requireStaff = (req, res, next) => {
   const u = req.session.user;
   if (!u) return res.status(401).json({ error: 'Please log in first.' });
@@ -35,8 +41,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve the website files from the public folder.
 app.use(express.static(path.join(__dirname, 'public')));   // only /public is exposed
 
+// Keep a pool of database connections ready for requests to reuse.
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT) || 3306,
@@ -49,8 +57,13 @@ const pool = mysql.createPool({
 });
 
 /* ---------- helpers ---------- */
+// Accepted Philippine mobile number formats "09XXXXXXXXX" or "+639XXXXXXXXX".
 const PHONE = /^(09\d{9}|\+639\d{9})$/;
+
+// Turn empty values into null and trim spaces from values that are provided.
 const blank = v => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim());
+
+// Send an error response with a message and HTTP status code.
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 
 // Run a CALL and return the rows of its (first) result set.
@@ -69,6 +82,7 @@ async function nextId(proc, col) {
   } finally { conn.release(); }
 }
 
+// Turn common database errors into messages the page can display.
 function handleError(res, e) {
   if (e.code === 'ER_DUP_ENTRY') return bad(res, 'That email is already registered.', 409);
   if (e.code === 'ER_NO_REFERENCED_ROW_2') return bad(res, 'Invalid program or department selected.');
@@ -77,6 +91,7 @@ function handleError(res, e) {
 }
 
 /* ---------- lookups for the dropdowns ---------- */
+// The forms call these routes to fill their program and department lists.
 app.get('/api/programs', async (req, res) => {
   try { const [r] = await pool.query('SELECT program_id, program_name FROM programs ORDER BY program_name'); res.json(r); }
   catch (e) { handleError(res, e); }
@@ -87,6 +102,7 @@ app.get('/api/departments', async (req, res) => {
 });
 
 /* ---------- next auto-generated ID (preview) ---------- */
+// Show the next student or staff ID on the form before an account is created.
 app.get('/api/next-id/:role', requireStaff, async (req, res) => {
   try {
     if (req.params.role === 'student') return res.json({ id: await nextId('sp_next_student_id', 'next_student_id') });
@@ -96,6 +112,7 @@ app.get('/api/next-id/:role', requireStaff, async (req, res) => {
 });
 
 /* ---------- create student ---------- */
+// Check the submitted details before asking the database to create the student account.
 app.post('/api/students', requireStaff, async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
@@ -113,6 +130,7 @@ app.post('/api/students', requireStaff, async (req, res) => {
   if (score !== null && (Number.isNaN(score) || score < 0 || score > 100)) return bad(res, 'Entrance exam score must be 0-100.');
 
   try {
+    // The stored procedure saves the student and returns the new ID and temporary password.
     const rows = await callProc('CALL sp_create_student(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
       b.lastName.trim(), b.firstName.trim(), blank(b.middleName), blank(b.suffix),
       b.email.trim(), Number(b.programId), b.birthday, b.contact, b.address.trim(),
@@ -124,6 +142,7 @@ app.post('/api/students', requireStaff, async (req, res) => {
 });
 
 /* ---------- create staff ---------- */
+// Check the staff details before asking the database to create the account.
 app.post('/api/staff', requireStaff, async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
@@ -149,6 +168,7 @@ const USER_SQL = `
   FROM users u LEFT JOIN students s ON s.user_id = u.user_id
   WHERE u.username = ?`;
 
+// Staff use this route to look up a user's details by ID.
 app.get('/api/users/:id', requireStaff, async (req, res) => {
   try {
     const [r] = await pool.query(USER_SQL, [req.params.id]);
@@ -157,6 +177,7 @@ app.get('/api/users/:id', requireStaff, async (req, res) => {
   } catch (e) { handleError(res, e); }
 });
 
+// This update logic is shared by users editing their own details and staff editing another account.
 const updateUserHandler = async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
@@ -181,6 +202,7 @@ const updateUserHandler = async (req, res) => {
 app.put('/api/users/:id', requireStaff, updateUserHandler);        // staff/admin edit anyone
 
 /* ---------- the logged-in person's own details ---------- */
+// These routes let a signed-in user view or update their own account.
 app.get('/api/me', requireLogin, async (req, res) => {
   try {
     const [r] = await pool.query(USER_SQL, [req.session.user.username]);
@@ -196,6 +218,7 @@ app.put('/api/me', requireLogin, (req, res) => {                   // you can on
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
 
 /* ---------- login (admin and staff only) ---------- */
+// Check the login with MySQL. Student accounts are not allowed into this system.
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return bad(res, 'Enter your username and password.');
