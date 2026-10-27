@@ -10,7 +10,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: 'Poppins', sans-serif; color: var(--ink); background: #fff; }
 
-/* ---------- Header + side menu ---------- */
+/* Header and Side Menu */
 .topbar { background: var(--blue); height: 68px; display: flex; align-items: center; padding: 0 36px; gap: 34px; }
 .topbar h1 { color: var(--lime); font-size: 24px; font-weight: 700; margin: 0; text-transform: uppercase; flex: 1; }
 .icon-btn { background: none; border: 0; cursor: pointer; padding: 0; display: flex; }
@@ -18,16 +18,14 @@ body { margin: 0; font-family: 'Poppins', sans-serif; color: var(--ink); backgro
 .burger span { display: block; width: 44px; height: 4px; background: var(--lime); margin: 4px 0; }
 .logout svg { width: 40px; height: 40px; }
 
-/* Menu slides down below the blue top bar (the bar stays visible) */
 .menu { display: flex; background: var(--grey); max-height: 0; overflow: hidden; visibility: hidden;
   transition: max-height .35s ease, visibility 0s linear .35s; }
 .menu.open { max-height: 120px; visibility: visible; transition: max-height .35s ease, visibility 0s; }
-/* X is centred under the burger icon (36px padding + 44px icon + 36px = 116px column) */
 .menu .close { width: 116px; align-items: center; justify-content: center; background: var(--grey); color: var(--blue); font-size: 34px; font-weight: 700; line-height: 1; }
 .menu a { display: flex; align-items: center; padding: 20px 32px; color: var(--blue); font-weight: 700; text-transform: uppercase; text-decoration: none; font-size: 20px; }
 .menu a.active { background: var(--lime); }
 
-/* ---------- Form layout ---------- */
+/* Form Layout*/
 main { padding: 24px 58px 40px; }
 .id-line { font-weight: 700; font-size: 22px; margin: 0 0 16px; text-transform: uppercase; }
 .grid { display: grid; grid-template-columns: 390px 390px 1fr; column-gap: 94px; }
@@ -41,7 +39,6 @@ input::placeholder { color: #aaa; }
 input[readonly] { background: #f1f2f4; color: #555; }
 .wide { grid-column: 1 / span 2; }
 .full-btn-row { display: flex; justify-content: flex-end; margin-top: 18px; }
-/* Student page: right column spans both rows so Address sits directly under the contact fields */
 .grid-student { grid-template-rows: auto 1fr; }
 .grid-student .side { grid-row: 1 / span 2; grid-column: 3; }   /* pinned to column 3 */
 .btn-cell { display: flex; justify-content: flex-end; }
@@ -49,7 +46,7 @@ input[readonly] { background: #f1f2f4; color: #555; }
 .btn { background: var(--lime); color: var(--blue); font: 700 20px 'Poppins', sans-serif; text-transform: uppercase; border: 0; padding: 0 24px; height: 68px; cursor: pointer; }
 .btn:hover { filter: brightness(.95); }
 
-/* ---------- Student classification panel ---------- */
+/* Student classification panel  */
 .panel { border: 1px solid #333; margin-bottom: 22px; }
 .panel .split { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #333; }
 .panel .cell { padding: 12px 14px; font-size: 14px; }
@@ -66,7 +63,7 @@ input[readonly] { background: #f1f2f4; color: #555; }
 .panel.pad .lbl { margin-top: 0; font-size: 17px; }
 input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-color: var(--blue); margin: 0; flex: none; }
 
-/* ---------- Login ---------- */
+/*  Login */
 .login { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .login img { width: 130px; height: 130px; object-fit: contain; margin-bottom: 40px; }
 .login form { width: 494px; }
@@ -74,7 +71,7 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 .login .recover { display: block; text-align: right; color: #222; font-size: 18px; margin: 4px 0 40px; }
 .login .btn-blue { display: block; margin: 0 auto; background: var(--blue); color: #fff; font: 700 32px 'Poppins', sans-serif; border: 0; width: 242px; height: 65px; cursor: pointer; }
 
-/* ---------- Messages ---------- */
+/* Message Notif */
 .toast { position: fixed; right: 30px; bottom: 30px; background: var(--blue); color: #fff; padding: 18px 24px; max-width: 420px; line-height: 1.5; display: none; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .toast.show { display: block; }
 .toast b { color: var(--lime); }
@@ -85,5 +82,5 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
   .wide { grid-column: auto; }
   .grid-student { grid-template-rows: none; }
   .grid-student .side { grid-row: auto; grid-column: auto; }
-  main { padding: 20px; }
+  main { padding: 10px; }
 }
