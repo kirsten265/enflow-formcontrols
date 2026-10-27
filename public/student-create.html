@@ -11,7 +11,7 @@
   <p class="id-line">Student ID: <span id="studentId">—</span></p>
 
   <form id="studentForm" novalidate>
-    <div class="grid grid-student">
+    <div class="grid">
       <!-- COLUMN 1 -->
       <div class="col">
         <label class="lbl">Name</label>
@@ -53,8 +53,8 @@
         <input type="tel" id="guardianContact" inputmode="tel" placeholder="09XXXXXXXXX" required>
       </div>
 
-      <!-- COLUMN 3: classification (spans both grid rows so Address can sit right under the contact fields) -->
-      <div class="col side">
+      <!-- COLUMN 3: classification -->
+      <div class="col">
         <div class="panel">
           <div class="split">
             <!-- Misaligned NSHSBP -->
@@ -95,8 +95,6 @@
           <label class="lbl">Entrance Exam Score</label>
           <input type="number" id="examScore" min="0" max="100" step="0.01">
         </div>
-
-        <div class="btn-cell"><button type="submit" class="btn">Create Account</button></div>
       </div>
 
       <!-- ADDRESS (spans two columns) -->
@@ -107,12 +105,13 @@
     </div>
 
     <div class="error" id="formError"></div>
+    <div class="full-btn-row"><button type="submit" class="btn">Create Account</button></div>
   </form>
 </main>
 
 <script src="js/app.js"></script>
 <script>
-  buildHeader('Student Account Creation', 'student-create.html');
+  buildHeader('Student Account Creation', 'student-create.html');   // redirects to login if not signed in
   setToday(birthday);
   fillSelect(program, '/api/programs', 'program_id', 'program_name');
   async function refreshId() {            // preview of the next AUTO_INCREMENT id from the database

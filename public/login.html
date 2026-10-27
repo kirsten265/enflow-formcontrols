@@ -10,7 +10,7 @@
   <div class="login">
     <!-- Put the school logo file at images/logo.png -->
     <img src="images/logo.png" alt="Mary The Queen College of Quezon City logo">
-    <form id="loginForm" autocomplete="off">
+    <form id="loginForm" autocomplete="off" novalidate>
       <input type="text" id="username" name="username" placeholder="Username" required>
       <input type="password" id="password" name="password" placeholder="Password" required>
       <a class="recover" href="#" id="recover">Recover an account?</a>
@@ -20,13 +20,24 @@
   </div>
   <script src="js/app.js"></script>
   <script>
-    document.getElementById('loginForm').addEventListener('submit', async e => {
+    console.log('Login page ready. Address:', location.href);
+    const form = document.getElementById('loginForm');
+    const btn = form.querySelector('button');
+    function showError(m) { err.textContent = m; err.style.display = 'block'; }
+
+    form.addEventListener('submit', async e => {
       e.preventDefault();
       err.style.display = 'none';
+      if (location.protocol === 'file:') return showError('Open this page at http://localhost:3000/login.html (run "npm start" first), not as a file.');
+      if (!username.value.trim() || !password.value) return showError('Enter your username and password.');
+      btn.disabled = true; btn.textContent = 'WAIT...';
       try {
-        await api.post('/api/login', { username: username.value.trim(), password: password.value });
-        location.href = 'student-create.html';
-      } catch (ex) { err.textContent = ex.message; err.style.display = 'block'; }
+        const res = await api.post('/api/login', { username: username.value.trim(), password: password.value });
+        location.href = res.role === 'student' ? 'update-user.html' : 'student-create.html';
+      } catch (ex) {
+        showError(ex.message);
+        btn.disabled = false; btn.textContent = 'LOGIN';
+      }
     });
     recover.onclick = e => { e.preventDefault(); alert('Please contact the Registrar to reset your account.'); };
 </script>

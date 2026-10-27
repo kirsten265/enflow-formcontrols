@@ -8,7 +8,7 @@
 </head>
 <body>
 <main>
-  <!-- Opened as update-user.html?id=2410001 (the ID is not editable) -->
+  <p class="id-line" id="idLine"></p>
   <input type="hidden" id="userId">
 
   <form id="updateForm" novalidate>
@@ -48,18 +48,23 @@
 
 <script src="js/app.js"></script>
 <script>
-  buildHeader('Update User Details', 'update-user.html');
+  const meReady = buildHeader('Update User Details', 'update-user.html');
   setToday(birthday);
 
   const params = new URLSearchParams(location.search);
   let user = null;
+  let endpoint = '/api/me';          // each person edits their own account
 
   (async () => {
+    const me = await meReady;
+    if (!me) return;
     const id = params.get('id');
-    if (!id) return toast('Open this page as <b>update-user.html?id=YOUR_ID</b> (a Student ID or Staff ID).', 8000);
     try {
-      user = await api.get('/api/users/' + encodeURIComponent(id));
+      // Staff/admin may open ?id=... to edit someone else; everyone else sees only their own account.
+      if (id && me.role !== 'student') { endpoint = '/api/users/' + encodeURIComponent(id); }
+      user = await api.get(endpoint);
       userId.value = user.username;
+      idLine.textContent = (user.role === 'student' ? 'Student ID: ' : user.role === 'staff' ? 'Staff ID: ' : 'Admin: ') + user.username;
       lastName.value = user.last_name; firstName.value = user.first_name;
       middleName.value = user.middle_name || ''; suffix.value = user.suffix_name || '';
       birthday.value = user.birthday; contact.value = user.contact_no; address.value = user.address;
@@ -83,7 +88,7 @@
     if (!address.value.trim()) return err('Address is required.');
 
     try {
-      await api.put('/api/users/' + encodeURIComponent(user.username), {
+      await api.put(endpoint, {
         lastName: lastName.value.trim(), firstName: firstName.value.trim(),
         middleName: middleName.value.trim(), suffix: suffix.value.trim(),
         birthday: birthday.value, contact: cleanPhone(contact.value), address: address.value.trim(),

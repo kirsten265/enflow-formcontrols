@@ -2,9 +2,39 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
 const path = require('path');
+const session = require('express-session');
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => { console.log(new Date().toLocaleTimeString(), req.method, req.url); next(); });
+
+/* ---------- sessions: remembers who is logged in ---------- */
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'change-this-secret-in-env',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 2 },   // 2 hours
+}));
+
+const requireLogin = (req, res, next) =>
+  req.session.user ? next() : res.status(401).json({ error: 'Please log in first.' });
+const requireStaff = (req, res, next) => {
+  const u = req.session.user;
+  if (!u) return res.status(401).json({ error: 'Please log in first.' });
+  if (u.role === 'student') return res.status(403).json({ error: 'You are not allowed to do that.' });
+  next();
+};
+
+/* Protect the pages: must be logged in; students only get the Update page. */
+app.use((req, res, next) => {
+  const p = req.path === '/' ? '/login.html' : req.path;
+  if (!p.endsWith('.html') || p === '/login.html') return next();
+  const u = req.session.user;
+  if (!u) return res.redirect('/login.html');
+  if (u.role === 'student' && p !== '/update-user.html') return res.redirect('/update-user.html');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));   // only /public is exposed
 
 const pool = mysql.createPool({
@@ -57,7 +87,7 @@ app.get('/api/departments', async (req, res) => {
 });
 
 /* ---------- next auto-generated ID (preview) ---------- */
-app.get('/api/next-id/:role', async (req, res) => {
+app.get('/api/next-id/:role', requireStaff, async (req, res) => {
   try {
     if (req.params.role === 'student') return res.json({ id: await nextId('sp_next_student_id', 'next_student_id') });
     if (req.params.role === 'staff')   return res.json({ id: await nextId('sp_next_staff_id',   'next_staff_id') });
@@ -66,7 +96,7 @@ app.get('/api/next-id/:role', async (req, res) => {
 });
 
 /* ---------- create student ---------- */
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', requireStaff, async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
   if (!/^\S+@\S+\.\S+$/.test(b.email || '')) return bad(res, 'Enter a valid email address.');
@@ -94,7 +124,7 @@ app.post('/api/students', async (req, res) => {
 });
 
 /* ---------- create staff ---------- */
-app.post('/api/staff', async (req, res) => {
+app.post('/api/staff', requireStaff, async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
   if (!/^\S+@\S+\.\S+$/.test(b.email || '')) return bad(res, 'Enter a valid email address.');
@@ -119,7 +149,7 @@ const USER_SQL = `
   FROM users u LEFT JOIN students s ON s.user_id = u.user_id
   WHERE u.username = ?`;
 
-app.get('/api/users/:id', async (req, res) => {
+app.get('/api/users/:id', requireStaff, async (req, res) => {
   try {
     const [r] = await pool.query(USER_SQL, [req.params.id]);
     if (!r.length) return bad(res, 'No user found with that ID.', 404);
@@ -127,7 +157,7 @@ app.get('/api/users/:id', async (req, res) => {
   } catch (e) { handleError(res, e); }
 });
 
-app.put('/api/users/:id', async (req, res) => {
+const updateUserHandler = async (req, res) => {
   const b = req.body || {};
   if (!blank(b.lastName) || !blank(b.firstName)) return bad(res, 'Last name and first name are required.');
   if (!blank(b.birthday)) return bad(res, 'Birthday is required.');
@@ -147,7 +177,23 @@ app.put('/api/users/:id', async (req, res) => {
     ]);
     res.json({ ok: true });
   } catch (e) { handleError(res, e); }
+};
+app.put('/api/users/:id', requireStaff, updateUserHandler);        // staff/admin edit anyone
+
+/* ---------- the logged-in person's own details ---------- */
+app.get('/api/me', requireLogin, async (req, res) => {
+  try {
+    const [r] = await pool.query(USER_SQL, [req.session.user.username]);
+    if (!r.length) return bad(res, 'Account not found.', 404);
+    res.json(r[0]);
+  } catch (e) { handleError(res, e); }
 });
+app.put('/api/me', requireLogin, (req, res) => {                   // you can only edit yourself
+  req.params = { id: req.session.user.username };
+  return updateUserHandler(req, res);
+});
+
+app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
 
 /* ---------- login (admin and staff only) ---------- */
 app.post('/api/login', async (req, res) => {
@@ -156,7 +202,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const rows = await callProc('CALL sp_login(?,?)', [String(username).trim(), String(password)]);
     if (!rows.length) return bad(res, 'Invalid username or password.', 401);
-    if (rows[0].role === 'student') return bad(res, 'Students cannot access this system.', 403);
+    req.session.user = { userId: rows[0].user_id, username: String(username).trim(), role: rows[0].role };
     res.json({ ok: true, role: rows[0].role, mustChangePassword: !!rows[0].must_change_password });
   } catch (e) { handleError(res, e); }
 });

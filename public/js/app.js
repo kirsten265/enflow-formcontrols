@@ -24,11 +24,19 @@ function buildHeader(title, activeFile) {
       ${PAGES.map(([f, t]) => `<a href="${f}" class="${f === activeFile ? 'active' : ''}">${t}</a>`).join('')}
     </nav>`;
   document.body.prepend(header);
-  const menu = document.getElementById('menu');
-  // The blue top bar stays in place; the menu slides open underneath it.
-  document.getElementById('openMenu').onclick  = () => menu.classList.toggle('open');
-  document.getElementById('closeMenu').onclick = () => menu.classList.remove('open');
-  document.getElementById('logout').onclick = () => { location.href = 'login.html'; };
+  document.getElementById('openMenu').onclick  = () => { menu.classList.add('open');  document.querySelector('.topbar').style.display = 'none'; };
+  document.getElementById('closeMenu').onclick = () => { menu.classList.remove('open'); document.querySelector('.topbar').style.display = 'flex'; };
+  document.getElementById('logout').onclick = async () => {
+    try { await api.post('/api/logout'); } catch {}
+    location.href = 'login.html';
+  };
+
+  // Who is signed in? Students only see "Update User Details".
+  return api.get('/api/me').then(me => {
+    if (me.role === 'student')
+      document.querySelectorAll('#menu a').forEach(a => { if (!a.href.endsWith('update-user.html')) a.style.display = 'none'; });
+    return me;
+  }).catch(() => { location.href = 'login.html'; return null; });
 }
 
 /* ---------- Backend API ---------- */
