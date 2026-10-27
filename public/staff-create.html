@@ -61,9 +61,14 @@
 <script>
   buildHeader('Staff Account Creation', 'staff-create.html');
   setToday(birthday);
-  staffId.textContent = db.nextId('staff');
+  fillSelect(department, '/api/departments', 'department_id', 'department_name');
+  async function refreshId() {
+    try { staffId.textContent = (await api.get('/api/next-id/staff')).id; }
+    catch { staffId.textContent = '—'; }
+  }
+  refreshId();
 
-  staffForm.addEventListener('submit', e => {
+  staffForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
     formError.style.display = 'none';
@@ -75,17 +80,16 @@
     if (!validPhone(contact.value)) return err('Contact no. must look like 09XXXXXXXXX.');
     if (!address.value.trim()) return err('Address is required.');
 
-    // ---- DEMO save. Real version: call sp_create_staff(...) on the server ----
-    const id = String(db.nextId('staff'));
-    const pw = db.tempPassword();
-    db.addUser({ id, role: 'staff', password: pw, email: email.value.trim(),
-      lastName: lastName.value.trim(), firstName: firstName.value.trim(), middleName: middleName.value.trim(),
-      suffix: suffix.value.trim(), birthday: birthday.value, contact: contact.value, address: address.value.trim(),
-      department: department.value });
-
-    toast(`Account created.<br>Staff ID: <b>${id}</b><br>Temporary password: <b>${pw}</b><br>Give these to the staff member — the password is shown only once.`);
-    staffForm.reset();
-    staffId.textContent = db.nextId('staff');
+    try {
+      const res = await api.post('/api/staff', {
+        lastName: lastName.value.trim(), firstName: firstName.value.trim(),
+        middleName: middleName.value.trim(), suffix: suffix.value.trim(),
+        email: email.value.trim(), departmentId: +department.value, birthday: birthday.value,
+        contact: cleanPhone(contact.value), address: address.value.trim(),
+      });
+      toast(`Account created.<br>Staff ID: <b>${res.staff_id}</b><br>Temporary password: <b>${res.temporary_password}</b><br>Give these to the staff member — the password is shown only once.`, 20000);
+      staffForm.reset(); refreshId();
+    } catch (ex) { err(ex.message); }
   });
 </script>
 </body>

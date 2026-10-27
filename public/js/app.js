@@ -1,7 +1,5 @@
-/* Shared behaviour: header/menu, demo "database", validation, toast.
-   DEMO MODE: data is kept in localStorage so the screens work without a server.
-   To use the real MySQL database, replace the db.* functions with fetch() calls
-   to a backend (PHP / Node) that runs the stored procedures in schema.sql. */
+/* Shared behaviour: header/menu, API helper, validation, toast.
+   The screens talk to the Node backend (server.js), which calls the MySQL stored procedures. */
 
 const PAGES = [
   ['student-create.html', 'Student Account Creation'],
@@ -31,21 +29,30 @@ function buildHeader(title, activeFile) {
   document.getElementById('logout').onclick = () => { location.href = 'login.html'; };
 }
 
-/* ---------- Demo database ---------- */
-const db = {
-  load(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  save(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
-  nextId(role) {                       // mimics AUTO_INCREMENT start values
-    const start = role === 'student' ? 2410001 : 1422377;
-    const users = this.load('users', []).filter(u => u.role === role);
-    return users.length ? Math.max(...users.map(u => +u.id)) + 1 : start;
+/* ---------- Backend API ---------- */
+const api = {
+  async req(method, url, body) {
+    let r;
+    try {
+      r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    } catch { throw new Error('Cannot reach the server. Is "npm start" running?'); }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Server error');
+    return data;
   },
-  tempPassword() {                     // mimics fn_generate_temp_password()
-    const a = new Uint8Array(4); crypto.getRandomValues(a);
-    return 'MTQ-' + [...a].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-  },
-  addUser(u) { const users = this.load('users', []); users.push(u); this.save('users', users); },
+  get:  url       => api.req('GET', url),
+  post: (url, b) => api.req('POST', url, b),
+  put:  (url, b) => api.req('PUT', url, b),
 };
+
+/* Fill a <select> from the database, keeping its first "Select" option. */
+async function fillSelect(select, url, valueKey, textKey) {
+  try {
+    const rows = await api.get(url);
+    select.length = 1;
+    rows.forEach(r => select.add(new Option(r[textKey], r[valueKey])));
+  } catch (e) { toast(e.message, 6000); }
+}
 
 /* ---------- Helpers ---------- */
 function toast(html, ms = 9000) {
@@ -57,4 +64,5 @@ function toast(html, ms = 9000) {
 const PH_PHONE = /^(09\d{9}|\+639\d{9})$/;            // Philippine mobile numbers
 function validPhone(v) { return PH_PHONE.test(v.replace(/[\s-]/g, '')); }
 function guardianOk(v) { return /^[^,]+,\s*[^,]+$/.test(v.trim()); }   // "LN, FN MN"
+function cleanPhone(v) { return v.replace(/[\s-]/g, ''); }
 function setToday(input) { input.max = new Date().toISOString().slice(0, 10); }

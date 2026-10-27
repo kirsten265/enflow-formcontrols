@@ -113,7 +113,12 @@
 <script>
   buildHeader('Student Account Creation', 'student-create.html');
   setToday(birthday);
-  studentId.textContent = db.nextId('student');       // preview of next AUTO_INCREMENT id
+  fillSelect(program, '/api/programs', 'program_id', 'program_name');
+  async function refreshId() {            // preview of the next AUTO_INCREMENT id from the database
+    try { studentId.textContent = (await api.get('/api/next-id/student')).id; }
+    catch { studentId.textContent = '—'; }
+  }
+  refreshId();
 
   /* Checkboxes in the same group behave like radio buttons (pick one). */
   document.querySelectorAll('input[type=checkbox][data-group]').forEach(cb => {
@@ -130,7 +135,7 @@
     });
   }
 
-  studentForm.addEventListener('submit', e => {
+  studentForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
     formError.style.display = 'none';
@@ -145,15 +150,15 @@
     if (!address.value.trim()) return err('Address is required.');
     if (!chkFreshmen.checked && !chkTransferee.checked) return err('Select Freshmen or Transferee.');
 
-    let alignment, bridging = null, background, extra = 0;
+    let alignment, bridging = null, background;
     if (chkNshsbp.checked) {
       background = document.querySelector('input[name=nshsbp]:checked')?.value;
       if (!background) return err('Choose BTZ, ALS Graduate or HSG under Misaligned (NSHSBP).');
-      alignment = 'Misaligned'; bridging = 'NSHSBP'; extra = 5;
+      alignment = 'Misaligned'; bridging = 'NSHSBP';
     } else if (chkShsbp.checked) {
       background = document.querySelector('input[name=shsbp]:checked')?.value;
       if (!background) return err('Choose an option under Misaligned (SHSBP).');
-      alignment = 'Misaligned'; bridging = 'SHSBP'; extra = 3;
+      alignment = 'Misaligned'; bridging = 'SHSBP';
     } else if (chkAligned.checked) {
       background = document.querySelector('input[name=aligned]:checked')?.value;
       if (!background) return err('Choose Former SHS or SHS under Aligned.');
@@ -163,19 +168,19 @@
     const score = examScore.value === '' ? null : +examScore.value;
     if (score !== null && (score < 0 || score > 100)) return err('Entrance exam score must be 0–100.');
 
-    // ---- DEMO save. Real version: call sp_create_student(...) on the server ----
-    const id = String(db.nextId('student'));
-    const pw = db.tempPassword();
-    db.addUser({ id, role: 'student', password: pw, email: email.value.trim(),
-      lastName: lastName.value.trim(), firstName: firstName.value.trim(), middleName: middleName.value.trim(),
-      suffix: suffix.value.trim(), birthday: birthday.value, contact: contact.value, address: address.value.trim(),
-      guardian: guardian.value.trim(), guardianContact: guardianContact.value, program: program.value,
-      studentType: chkFreshmen.checked ? 'Freshmen' : 'Transferee', alignment, bridging, background, extra, score });
-
-    toast(`Account created.<br>Student ID: <b>${id}</b><br>Temporary password: <b>${pw}</b><br>Give these to the student — the password is shown only once.`);
-    tempPw.value = pw;
-    studentForm.reset(); syncRadios();
-    studentId.textContent = db.nextId('student');
+    try {
+      const res = await api.post('/api/students', {
+        lastName: lastName.value.trim(), firstName: firstName.value.trim(),
+        middleName: middleName.value.trim(), suffix: suffix.value.trim(),
+        email: email.value.trim(), programId: +program.value, birthday: birthday.value,
+        contact: cleanPhone(contact.value), address: address.value.trim(),
+        guardian: guardian.value.trim(), guardianContact: cleanPhone(guardianContact.value),
+        studentType: chkFreshmen.checked ? 'Freshmen' : 'Transferee',
+        alignment, bridging, background, examScore: score,
+      });
+      toast(`Account created.<br>Student ID: <b>${res.student_id}</b><br>Temporary password: <b>${res.temporary_password}</b><br>Give these to the student — the password is shown only once.`, 20000);
+      studentForm.reset(); syncRadios(); refreshId();
+    } catch (ex) { err(ex.message); }
   });
 </script>
 </body>

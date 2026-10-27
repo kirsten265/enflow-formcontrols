@@ -9,7 +9,7 @@
 <body>
   <div class="login">
     <!-- Put the school logo file at images/logo.png -->
-    <img src="\public\images\logo.png" alt="Mary The Queen College of Quezon City logo">
+    <img src="images/logo.png" alt="Mary The Queen College of Quezon City logo">
     <form id="loginForm" autocomplete="off">
       <input type="text" id="username" name="username" placeholder="Username" required>
       <input type="password" id="password" name="password" placeholder="Password" required>
@@ -20,16 +20,15 @@
   </div>
   <script src="js/app.js"></script>
   <script>
-    // Demo credentials (real version: call sp_login on the server)
-    document.getElementById('loginForm').addEventListener('submit', e => {
+    document.getElementById('loginForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const u = username.value.trim(), p = password.value;
-      const users = db.load('users', []);
-      const found = users.find(x => x.id === u && x.password === p);
-      if ((u === 'admin' && p === 'admin123') || found) location.href = 'student-create.html';
-      else err.style.display = 'block';
+      err.style.display = 'none';
+      try {
+        await api.post('/api/login', { username: username.value.trim(), password: password.value });
+        location.href = 'student-create.html';
+      } catch (ex) { err.textContent = ex.message; err.style.display = 'block'; }
     });
     recover.onclick = e => { e.preventDefault(); alert('Please contact the Registrar to reset your account.'); };
-  </script>
+</script>
 </body>
 </html>

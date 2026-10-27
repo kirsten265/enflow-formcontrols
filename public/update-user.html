@@ -52,20 +52,23 @@
   setToday(birthday);
 
   const params = new URLSearchParams(location.search);
-  const users = db.load('users', []);
-  const user = users.find(u => u.id === params.get('id'));
-  if (user) {
-    userId.value = user.id;
-    lastName.value = user.lastName; firstName.value = user.firstName;
-    middleName.value = user.middleName || ''; suffix.value = user.suffix || '';
-    birthday.value = user.birthday; contact.value = user.contact; address.value = user.address;
-    if (user.role === 'student') { guardian.value = user.guardian; guardianContact.value = user.guardianContact; }
-    else guardianCol.style.display = 'none';          // staff have no guardian
-  } else {
-    toast('No user loaded. Open this page as <b>update-user.html?id=YOUR_ID</b>, or create an account first.', 6000);
-  }
+  let user = null;
 
-  updateForm.addEventListener('submit', e => {
+  (async () => {
+    const id = params.get('id');
+    if (!id) return toast('Open this page as <b>update-user.html?id=YOUR_ID</b> (a Student ID or Staff ID).', 8000);
+    try {
+      user = await api.get('/api/users/' + encodeURIComponent(id));
+      userId.value = user.username;
+      lastName.value = user.last_name; firstName.value = user.first_name;
+      middleName.value = user.middle_name || ''; suffix.value = user.suffix_name || '';
+      birthday.value = user.birthday; contact.value = user.contact_no; address.value = user.address;
+      if (user.role === 'student') { guardian.value = user.guardian_name || ''; guardianContact.value = user.guardian_contact_no || ''; }
+      else guardianCol.style.display = 'none';          // staff have no guardian
+    } catch (ex) { toast(ex.message, 8000); }
+  })();
+
+  updateForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
     formError.style.display = 'none';
@@ -79,13 +82,15 @@
     }
     if (!address.value.trim()) return err('Address is required.');
 
-    // ---- DEMO save. Real version: call sp_update_user_details(...) ----
-    Object.assign(user, { lastName: lastName.value.trim(), firstName: firstName.value.trim(),
-      middleName: middleName.value.trim(), suffix: suffix.value.trim(), birthday: birthday.value,
-      contact: contact.value, address: address.value.trim() });
-    if (user.role === 'student') Object.assign(user, { guardian: guardian.value.trim(), guardianContact: guardianContact.value });
-    db.save('users', users);
-    toast('Details updated successfully.', 4000);
+    try {
+      await api.put('/api/users/' + encodeURIComponent(user.username), {
+        lastName: lastName.value.trim(), firstName: firstName.value.trim(),
+        middleName: middleName.value.trim(), suffix: suffix.value.trim(),
+        birthday: birthday.value, contact: cleanPhone(contact.value), address: address.value.trim(),
+        guardian: guardian.value.trim(), guardianContact: cleanPhone(guardianContact.value),
+      });
+      toast('Details updated successfully.', 4000);
+    } catch (ex) { err(ex.message); }
   });
 </script>
 </body>
