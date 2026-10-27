@@ -8,7 +8,10 @@
 </head>
 <body>
 <main>
+  <!-- Shows the ID or role of the account being edited. -->
   <p class="id-line" id="idLine"></p>
+
+  <!-- Stores the username used when saving the changes. -->
   <input type="hidden" id="userId">
 
   <form id="updateForm" novalidate>
@@ -28,6 +31,7 @@
         <input type="tel" id="contact" inputmode="tel" placeholder="09XXXXXXXXX" required>
       </div>
 
+      <!-- These fields are shown for students; staff do not have guardian details. -->
       <div class="col" id="guardianCol" style="margin-top:22px">
         <label class="lbl">Guardian Name</label>
         <input type="text" id="guardian" placeholder="LN, FN MN">
@@ -41,6 +45,7 @@
       </div>
     </div>
 
+    <!-- Displays validation or server errors. -->
     <div class="error" id="formError"></div>
     <div class="full-btn-row"><button type="submit" class="btn">Update Details</button></div>
   </form>
@@ -48,13 +53,18 @@
 
 <script src="js/app.js"></script>
 <script>
+  // Build the page header and wait for the app to check who is signed in.
   const meReady = buildHeader('Update User Details', 'update-user.html');
+
+  // Prevent selecting a future birthday.
   setToday(birthday);
 
+  // Read an optional account ID from the page address.
   const params = new URLSearchParams(location.search);
   let user = null;
-  let endpoint = '/api/me';          // each person edits their own account
+  let endpoint = '/api/me';          // By default, users edit their own account.
 
+  // Load the current user's details, or another account if staff/admin entered an ID.
   (async () => {
     const me = await meReady;
     if (!me) return;
@@ -62,17 +72,22 @@
     try {
       // Staff/admin may open ?id=... to edit someone else; everyone else sees only their own account.
       if (id && me.role !== 'student') { endpoint = '/api/users/' + encodeURIComponent(id); }
+
+      // Fill the form with the details returned by the server.
       user = await api.get(endpoint);
       userId.value = user.username;
       idLine.textContent = (user.role === 'student' ? 'Student ID: ' : user.role === 'staff' ? 'Staff ID: ' : 'Admin: ') + user.username;
       lastName.value = user.last_name; firstName.value = user.first_name;
       middleName.value = user.middle_name || ''; suffix.value = user.suffix_name || '';
       birthday.value = user.birthday; contact.value = user.contact_no; address.value = user.address;
+
+      // Show guardian fields only for student accounts.
       if (user.role === 'student') { guardian.value = user.guardian_name || ''; guardianContact.value = user.guardian_contact_no || ''; }
       else guardianCol.style.display = 'none';          // staff have no guardian
     } catch (ex) { toast(ex.message, 8000); }
   })();
 
+  // Check the edited details before sending them to the server.
   updateForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
@@ -81,6 +96,8 @@
     if (!lastName.value.trim() || !firstName.value.trim()) return err('Last name and first name are required.');
     if (!birthday.value) return err('Please enter the birthday.');
     if (!validPhone(contact.value)) return err('Contact no. must look like 09XXXXXXXXX.');
+
+    // Student accounts also need a valid guardian name and contact number.
     if (user.role === 'student') {
       if (!guardianOk(guardian.value)) return err('Guardian name must follow the format: LN, FN MN.');
       if (!validPhone(guardianContact.value)) return err('Guardian contact no. must look like 09XXXXXXXXX.');
@@ -88,6 +105,7 @@
     if (!address.value.trim()) return err('Address is required.');
 
     try {
+      // Send the updated values to the endpoint chosen when the user was loaded.
       await api.put(endpoint, {
         lastName: lastName.value.trim(), firstName: firstName.value.trim(),
         middleName: middleName.value.trim(), suffix: suffix.value.trim(),
