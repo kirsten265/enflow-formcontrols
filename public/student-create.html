@@ -12,7 +12,7 @@
 
   <form id="studentForm" novalidate>
     <div class="grid">
-      <!-- COLUMN 1 -->
+      <!-- Column 1: the student's name, birthday, and contact number. -->
       <div class="col">
         <label class="lbl">Name</label>
         <input type="text" id="lastName"   placeholder="Last name"  required>
@@ -27,7 +27,7 @@
         <input type="tel" id="contact" inputmode="tel" placeholder="09XXXXXXXXX" required>
       </div>
 
-      <!-- COLUMN 2 -->
+      <!-- Column 2: account, program, and guardian details. -->
       <div class="col">
         <label class="lbl">Email</label>
         <input type="email" id="email" required>
@@ -53,7 +53,7 @@
         <input type="tel" id="guardianContact" inputmode="tel" placeholder="09XXXXXXXXX" required>
       </div>
 
-      <!-- COLUMN 3: classification -->
+      <!-- Column 3: student classification and entrance exam score. -->
       <div class="col">
         <div class="panel">
           <div class="split">
@@ -84,6 +84,7 @@
           </div>
         </div>
 
+        <!-- Choose whether the student is a freshman or transferee. -->
         <div class="panel pad">
           <div class="row">
             <label class="opt"><input type="checkbox" id="chkFreshmen"   data-group="type"> Freshmen</label>
@@ -91,30 +92,39 @@
           </div>
         </div>
 
+        <!-- The exam score is optional, but if entered it must be from 0 to 100. -->
         <div class="panel pad">
           <label class="lbl">Entrance Exam Score</label>
           <input type="number" id="examScore" min="0" max="100" step="0.01">
         </div>
       </div>
 
-      <!-- ADDRESS (spans two columns) -->
+      <!-- The student's address. -->
       <div class="wide">
         <label class="lbl">Address</label>
         <input type="text" id="address" required>
       </div>
     </div>
 
+    <!-- Shows a validation or server error. -->
     <div class="error" id="formError"></div>
+
+    <!-- Submits the completed form. -->
     <div class="full-btn-row"><button type="submit" class="btn">Create Account</button></div>
   </form>
 </main>
 
 <script src="js/app.js"></script>
 <script>
+  // Add the page header and limit the birthday picker to today or earlier.
   buildHeader('Student Account Creation', 'student-create.html');   // redirects to login if not signed in
   setToday(birthday);
+  
+  // Load the program options from the database.
   fillSelect(program, '/api/programs', 'program_id', 'program_name');
-  async function refreshId() {            // preview of the next AUTO_INCREMENT id from the database
+
+  // Show a preview of the next student ID.
+  async function refreshId() {            
     try { studentId.textContent = (await api.get('/api/next-id/student')).id; }
     catch { studentId.textContent = '—'; }
   }
@@ -127,7 +137,8 @@
       syncRadios();
     });
   });
-  /* Sub-options are enabled only when their box is ticked. */
+  
+  /* Turn on each set of radio options only after its checkbox is selected. */
   function syncRadios() {
     [['chkNshsbp', 'nshsbp'], ['chkShsbp', 'shsbp'], ['chkAligned', 'aligned']].forEach(([box, name]) => {
       const on = document.getElementById(box).checked;
@@ -135,6 +146,7 @@
     });
   }
 
+  // Check the form details and choices before sending them to the server.
   studentForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
@@ -150,6 +162,7 @@
     if (!address.value.trim()) return err('Address is required.');
     if (!chkFreshmen.checked && !chkTransferee.checked) return err('Select Freshmen or Transferee.');
 
+    // Work out the student's alignment and the related bridging option.
     let alignment, bridging = null, background;
     if (chkNshsbp.checked) {
       background = document.querySelector('input[name=nshsbp]:checked')?.value;
@@ -165,10 +178,12 @@
       alignment = 'Aligned';
     } else return err('Select Aligned or a Misaligned category.');
 
+    // Keep the score empty if no score was entered.
     const score = examScore.value === '' ? null : +examScore.value;
     if (score !== null && (score < 0 || score > 100)) return err('Entrance exam score must be 0–100.');
 
     try {
+      // Send the cleaned form values to the server to create the student account.
       const res = await api.post('/api/students', {
         lastName: lastName.value.trim(), firstName: firstName.value.trim(),
         middleName: middleName.value.trim(), suffix: suffix.value.trim(),
@@ -178,6 +193,8 @@
         studentType: chkFreshmen.checked ? 'Freshmen' : 'Transferee',
         alignment, bridging, background, examScore: score,
       });
+
+      // Show the new ID and temporary password, then clear the form.
       toast(`Account created.<br>Student ID: <b>${res.student_id}</b><br>Temporary password: <b>${res.temporary_password}</b><br>Give these to the student — the password is shown only once.`, 20000);
       studentForm.reset(); syncRadios(); refreshId();
     } catch (ex) { err(ex.message); }
