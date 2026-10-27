@@ -41,6 +41,10 @@ input::placeholder { color: #aaa; }
 input[readonly] { background: #f1f2f4; color: #555; }
 .wide { grid-column: 1 / span 2; }
 .full-btn-row { display: flex; justify-content: flex-end; margin-top: 18px; }
+/* Student page: right column spans both rows so Address sits directly under the contact fields */
+.grid-student { grid-template-rows: auto 1fr; }
+.grid-student .side { grid-row: 1 / span 2; grid-column: 3; }   /* pinned to column 3 */
+.btn-cell { display: flex; justify-content: flex-end; }
 
 .btn { background: var(--lime); color: var(--blue); font: 700 20px 'Poppins', sans-serif; text-transform: uppercase; border: 0; padding: 0 24px; height: 68px; cursor: pointer; }
 .btn:hover { filter: brightness(.95); }
@@ -79,5 +83,7 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 @media (max-width: 1100px) {
   .grid, .grid.two { grid-template-columns: 1fr; }
   .wide { grid-column: auto; }
+  .grid-student { grid-template-rows: none; }
+  .grid-student .side { grid-row: auto; grid-column: auto; }
   main { padding: 20px; }
 }
