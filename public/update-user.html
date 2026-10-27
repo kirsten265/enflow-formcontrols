@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Update User Details</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <!-- Opened as update-user.html?id=2410001 (the ID is not editable) -->
+  <input type="hidden" id="userId">
+
+  <form id="updateForm" novalidate>
+    <div class="grid two">
+      <div class="wide">
+        <label class="lbl">Name</label>
+        <input type="text" id="lastName"   placeholder="Last name"  required>
+        <input type="text" id="firstName"  placeholder="First name" required>
+        <input type="text" id="middleName" placeholder="Middle name (optional)">
+        <input type="text" id="suffix"     placeholder="Suffix name (Jr., II. etc.)">
+      </div>
+
+      <div class="col" style="margin-top:22px">
+        <label class="lbl">Birthday</label>
+        <input type="date" id="birthday" required>
+        <label class="lbl">Contact No.</label>
+        <input type="tel" id="contact" inputmode="tel" placeholder="09XXXXXXXXX" required>
+      </div>
+
+      <div class="col" id="guardianCol" style="margin-top:22px">
+        <label class="lbl">Guardian Name</label>
+        <input type="text" id="guardian" placeholder="LN, FN MN">
+        <label class="lbl">Contact No.</label>
+        <input type="tel" id="guardianContact" inputmode="tel" placeholder="09XXXXXXXXX">
+      </div>
+
+      <div class="wide">
+        <label class="lbl">Address</label>
+        <input type="text" id="address" required>
+      </div>
+    </div>
+
+    <div class="error" id="formError"></div>
+    <div class="full-btn-row"><button type="submit" class="btn">Update Details</button></div>
+  </form>
+</main>
+
+<script src="js/app.js"></script>
+<script>
+  buildHeader('Update User Details', 'update-user.html');
+  setToday(birthday);
+
+  const params = new URLSearchParams(location.search);
+  const users = db.load('users', []);
+  const user = users.find(u => u.id === params.get('id'));
+  if (user) {
+    userId.value = user.id;
+    lastName.value = user.lastName; firstName.value = user.firstName;
+    middleName.value = user.middleName || ''; suffix.value = user.suffix || '';
+    birthday.value = user.birthday; contact.value = user.contact; address.value = user.address;
+    if (user.role === 'student') { guardian.value = user.guardian; guardianContact.value = user.guardianContact; }
+    else guardianCol.style.display = 'none';          // staff have no guardian
+  } else {
+    toast('No user loaded. Open this page as <b>update-user.html?id=YOUR_ID</b>, or create an account first.', 6000);
+  }
+
+  updateForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const err = m => { formError.textContent = m; formError.style.display = 'block'; };
+    formError.style.display = 'none';
+    if (!user) return err('No user selected.');
+    if (!lastName.value.trim() || !firstName.value.trim()) return err('Last name and first name are required.');
+    if (!birthday.value) return err('Please enter the birthday.');
+    if (!validPhone(contact.value)) return err('Contact no. must look like 09XXXXXXXXX.');
+    if (user.role === 'student') {
+      if (!guardianOk(guardian.value)) return err('Guardian name must follow the format: LN, FN MN.');
+      if (!validPhone(guardianContact.value)) return err('Guardian contact no. must look like 09XXXXXXXXX.');
+    }
+    if (!address.value.trim()) return err('Address is required.');
+
+    // ---- DEMO save. Real version: call sp_update_user_details(...) ----
+    Object.assign(user, { lastName: lastName.value.trim(), firstName: firstName.value.trim(),
+      middleName: middleName.value.trim(), suffix: suffix.value.trim(), birthday: birthday.value,
+      contact: contact.value, address: address.value.trim() });
+    if (user.role === 'student') Object.assign(user, { guardian: guardian.value.trim(), guardianContact: guardianContact.value });
+    db.save('users', users);
+    toast('Details updated successfully.', 4000);
+  });
+</script>
+</body>
+</html>
