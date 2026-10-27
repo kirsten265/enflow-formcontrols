@@ -20,6 +20,7 @@
         <input type="text" id="middleName" placeholder="Middle name (optional)">
         <input type="text" id="suffix"     placeholder="Suffix name (Jr., II. etc.)">
       </div>
+      
       <!-- Account details: email, temporary password, department -->
       <div class="col">
         <label class="lbl">Email</label>
@@ -64,15 +65,21 @@
 <!-- Shared helpers: api, toast, buildHeader, setToday, fillSelect, validPhone, cleanPhone -->
 <script src="js/app.js"></script>
 <script>
+  // Add the page header and prevent selecting a future birthday.
   buildHeader('Staff Account Creation', 'staff-create.html');
   setToday(birthday);
+
+  // Fill the department menu with the options saved in the database.
   fillSelect(department, '/api/departments', 'department_id', 'department_name');
+
+  // Show a preview of the next staff ID.
   async function refreshId() {
     try { staffId.textContent = (await api.get('/api/next-id/staff')).id; }
     catch { staffId.textContent = '—'; }
   }
   refreshId();
 
+  // Check the form before sending the staff details to the server.
   staffForm.addEventListener('submit', async e => {
     e.preventDefault();
     const err = m => { formError.textContent = m; formError.style.display = 'block'; };
@@ -86,12 +93,15 @@
     if (!address.value.trim()) return err('Address is required.');
 
     try {
+      // Send the cleaned-up form values to the server to create the account.
       const res = await api.post('/api/staff', {
         lastName: lastName.value.trim(), firstName: firstName.value.trim(),
         middleName: middleName.value.trim(), suffix: suffix.value.trim(),
         email: email.value.trim(), departmentId: +department.value, birthday: birthday.value,
         contact: cleanPhone(contact.value), address: address.value.trim(),
       });
+
+      // Show the new ID and temporary password, then clear the form for the next account.
       toast(`Account created.<br>Staff ID: <b>${res.staff_id}</b><br>Temporary password: <b>${res.temporary_password}</b><br>Give these to the staff member — the password is shown only once.`, 20000);
       staffForm.reset(); refreshId();
     } catch (ex) { err(ex.message); }
