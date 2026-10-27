@@ -14,13 +14,17 @@ body { margin: 0; font-family: 'Poppins', sans-serif; color: var(--ink); backgro
 .topbar { background: var(--blue); height: 68px; display: flex; align-items: center; padding: 0 36px; gap: 34px; }
 .topbar h1 { color: var(--lime); font-size: 24px; font-weight: 700; margin: 0; text-transform: uppercase; flex: 1; }
 .icon-btn { background: none; border: 0; cursor: pointer; padding: 0; display: flex; }
+.burger { flex-direction: column; }   /* stack the three bars vertically */
 .burger span { display: block; width: 44px; height: 4px; background: var(--lime); margin: 4px 0; }
 .logout svg { width: 40px; height: 40px; }
 
-.menu { display: none; background: var(--grey); }
-.menu.open { display: flex; }
-.menu .close { width: 105px; background: var(--grey); color: var(--blue); font-size: 40px; font-weight: 700; }
-.menu a { padding: 20px 32px; color: var(--blue); font-weight: 700; text-transform: uppercase; text-decoration: none; font-size: 20px; }
+/* Menu slides down below the blue top bar (the bar stays visible) */
+.menu { display: flex; background: var(--grey); max-height: 0; overflow: hidden; visibility: hidden;
+  transition: max-height .35s ease, visibility 0s linear .35s; }
+.menu.open { max-height: 120px; visibility: visible; transition: max-height .35s ease, visibility 0s; }
+/* X is centred under the burger icon (36px padding + 44px icon + 36px = 116px column) */
+.menu .close { width: 116px; align-items: center; justify-content: center; background: var(--grey); color: var(--blue); font-size: 34px; font-weight: 700; line-height: 1; }
+.menu a { display: flex; align-items: center; padding: 20px 32px; color: var(--blue); font-weight: 700; text-transform: uppercase; text-decoration: none; font-size: 20px; }
 .menu a.active { background: var(--lime); }
 
 /* ---------- Form layout ---------- */

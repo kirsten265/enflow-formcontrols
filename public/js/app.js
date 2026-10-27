@@ -24,8 +24,10 @@ function buildHeader(title, activeFile) {
       ${PAGES.map(([f, t]) => `<a href="${f}" class="${f === activeFile ? 'active' : ''}">${t}</a>`).join('')}
     </nav>`;
   document.body.prepend(header);
-  document.getElementById('openMenu').onclick  = () => { menu.classList.add('open');  document.querySelector('.topbar').style.display = 'none'; };
-  document.getElementById('closeMenu').onclick = () => { menu.classList.remove('open'); document.querySelector('.topbar').style.display = 'flex'; };
+  const menu = document.getElementById('menu');
+  // The blue top bar stays in place; the menu slides open underneath it.
+  document.getElementById('openMenu').onclick  = () => menu.classList.toggle('open');
+  document.getElementById('closeMenu').onclick = () => menu.classList.remove('open');
   document.getElementById('logout').onclick = () => { location.href = 'login.html'; };
 }
 
